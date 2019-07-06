@@ -119,66 +119,59 @@ fn box_blur_vert(backbuf: &mut Vec<[u8;3]>, frontbuf: &mut Vec<[u8;3]>, width: u
 #[inline]
 fn box_blur_horz(backbuf: &mut Vec<[u8;3]>, frontbuf: &mut Vec<[u8;3]>, width: usize, height: usize, blur_radius: usize)
 {
+    assert!(backbuf.len() == frontbuf.len());
+    assert!(backbuf.len() == width.checked_mul(height).unwrap());
+
     let iarr = 1.0 / (blur_radius + blur_radius + 1) as f32;
 
-    for i in 0..height {
+    for (backbuf_row, frontbuf_row) in backbuf.chunks_exact(width).zip(frontbuf.chunks_exact_mut(width)) {
 
-        let mut ti: usize = i * width; // VERTICAL: $i;
-        let mut li: usize = ti;
-        let mut ri: usize = ti + blur_radius;
-
-        let fv: [u8;3] = backbuf[ti];
-        let lv: [u8;3] = backbuf[ti + width - 1]; // VERTICAL: $backbuf[ti + $width - 1];
+        let fv = backbuf_row.first().unwrap(); // first value of the row
+        let lv = backbuf_row.last().unwrap();  // last value of the row
 
         let mut val_r: isize = (blur_radius as isize + 1) * (fv[0] as isize);
         let mut val_g: isize = (blur_radius as isize + 1) * (fv[1] as isize);
         let mut val_b: isize = (blur_radius as isize + 1) * (fv[2] as isize);
 
-        for j in 0..blur_radius {
-            let bb = backbuf[ti + j]; // VERTICAL: ti + j * width
+        for bb in backbuf_row[..blur_radius].iter() {
             val_r += bb[0] as isize;
             val_g += bb[1] as isize;
             val_b += bb[2] as isize;
         }
 
-        for _ in 0..(blur_radius + 1) {
-            let bb = backbuf[ri]; ri += 1;
+        for (bb, out) in backbuf_row[blur_radius..=blur_radius*2].iter().zip(frontbuf_row.iter_mut()) {
             val_r += bb[0] as isize - fv[0] as isize;
             val_g += bb[1] as isize - fv[1] as isize;
             val_b += bb[2] as isize - fv[2] as isize;
 
-            frontbuf[ti] = [(val_r as f32 * iarr).round() as u8,
-                            (val_g as f32 * iarr).round() as u8,
-                            (val_b as f32 * iarr).round() as u8];
-            ti += 1; // VERTICAL : ti += width, same with the other areas
+            *out = [(val_r as f32 * iarr).round() as u8,
+                    (val_g as f32 * iarr).round() as u8,
+                    (val_b as f32 * iarr).round() as u8];
         }
 
-        for _ in (blur_radius + 1)..(width - blur_radius) {
+        for (window, out) in backbuf_row.windows(blur_radius*2).zip(frontbuf_row[blur_radius..].iter_mut()) {
 
-            let bb1 = backbuf[ri]; ri += 1;
-            let bb2 = backbuf[li]; li += 1;
+            let bb1 = window.last().unwrap();
+            let bb2 = window.first().unwrap();
 
             val_r += bb1[0] as isize - bb2[0] as isize;
             val_g += bb1[1] as isize - bb2[1] as isize;
             val_b += bb1[2] as isize - bb2[2] as isize;
 
-            frontbuf[ti] = [(val_r as f32 * iarr).round() as u8,
-                            (val_g as f32 * iarr).round() as u8,
-                            (val_b as f32 * iarr).round() as u8];
-            ti += 1;
+            *out = [(val_r as f32 * iarr).round() as u8,
+                    (val_g as f32 * iarr).round() as u8,
+                    (val_b as f32 * iarr).round() as u8];
         }
 
-        for _ in (width - blur_radius)..width {
-            let bb = backbuf[li]; li += 1;
+        for (bb, out) in backbuf_row[width-blur_radius..].iter().zip(frontbuf_row[width-blur_radius..].iter_mut()) {
 
             val_r += lv[0] as isize - bb[0] as isize;
             val_g += lv[1] as isize - bb[1] as isize;
             val_b += lv[2] as isize - bb[2] as isize;
 
-            frontbuf[ti] = [(val_r as f32 * iarr).round() as u8,
-                            (val_g as f32 * iarr).round() as u8,
-                            (val_b as f32 * iarr).round() as u8];
-            ti += 1;
+            *out = [(val_r as f32 * iarr).round() as u8,
+                    (val_g as f32 * iarr).round() as u8,
+                    (val_b as f32 * iarr).round() as u8];
         }
     }
 }
