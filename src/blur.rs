@@ -148,7 +148,7 @@ fn box_blur_horz(backbuf: &mut Vec<[u8;3]>, frontbuf: &mut Vec<[u8;3]>, width: u
                     (val_b as f32 * iarr).round() as u8];
         }
 
-        for (window, out) in backbuf_row.windows(blur_radius*2).zip(frontbuf_row[blur_radius+1..].iter_mut()) {
+        for (window, out) in backbuf_row.windows(blur_radius*2+2).zip(frontbuf_row[blur_radius+1..].iter_mut()) {
 
             let bb1 = window.last().unwrap();
             let bb2 = window.first().unwrap();
