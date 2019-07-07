@@ -30,6 +30,9 @@ mod test;
 #[cfg(test)]
 mod bench;
 
+#[cfg(feature = "rayon")]
+extern crate rayon;
+
 pub mod utils;
 
 pub use blur::gaussian_blur as gaussian_blur;
