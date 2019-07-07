@@ -40,11 +40,24 @@ fn create_box_gauss(sigma: f32, n: usize)
     sizes
 }
 
-/// Needs 2x the same image
 #[inline]
+#[cfg(not(feature = "rayon"))]
 fn box_blur(backbuf: &mut Vec<[u8;3]>, frontbuf: &mut Vec<[u8;3]>, width: usize, height: usize, blur_radius: usize)
 {
     box_blur_horz(backbuf, frontbuf, width, height, blur_radius);
+    box_blur_vert(frontbuf, backbuf, width, height, blur_radius);
+}
+
+#[inline]
+#[cfg(feature = "rayon")]
+fn box_blur(backbuf: &mut Vec<[u8;3]>, frontbuf: &mut Vec<[u8;3]>, width: usize, height: usize, blur_radius: usize)
+{
+    use rayon::prelude::*;
+    backbuf.par_chunks(width).zip(frontbuf.par_chunks_mut(width)).for_each(|(in_row, out_row)| {
+        box_blur_horz(in_row, out_row, width, 1, blur_radius);
+    });
+    // for vertical pass we need some kind of abstraction that would make vertical slices
+    // which could also be fed to rayon and accepted as independent by the type system
     box_blur_vert(frontbuf, backbuf, width, height, blur_radius);
 }
 
