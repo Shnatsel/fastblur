@@ -5,7 +5,7 @@ pub fn gaussian_blur(data: &mut Vec<[u8;3]>, width: usize, height: usize, blur_r
     let boxes = create_box_gauss(blur_radius, 3);
     let mut backbuf = data.clone();
 
-    for box_size in boxes.iter() {
+    for box_size in boxes {
         let radius = ((box_size - 1) / 2) as usize;
         box_blur(&mut backbuf, data, width, height, radius, radius);
     }
@@ -17,7 +17,7 @@ pub fn gaussian_blur_asymmetric(data: &mut Vec<[u8;3]>, width: usize, height: us
     let boxes_vert = create_box_gauss(blur_radius_vertical, 3);
     let mut backbuf = data.clone();
 
-    for (box_size_horz, box_size_vert) in boxes_horz.iter().zip(boxes_vert.iter()) {
+    for (box_size_horz, box_size_vert) in boxes_horz.zip(boxes_vert) {
         let radius_horz = ((box_size_horz - 1) / 2) as usize;
         let radius_vert = ((box_size_vert - 1) / 2) as usize;
         box_blur(&mut backbuf, data, width, height, radius_horz, radius_vert);
@@ -28,38 +28,30 @@ pub fn gaussian_blur_asymmetric(data: &mut Vec<[u8;3]>, width: usize, height: us
 /// If there is no valid size (e.g. radius is negative), returns `vec![1; len]`
 /// which would translate to blur radius of 0
 fn create_box_gauss(sigma: f32, n: usize)
--> Vec<i32>
+-> impl Iterator<Item = i32>
 {
+    let mut wl: i32 = 1;
+    let mut wu: i32 = 1;
+    let mut m: usize = 0;
     if sigma > 0.0 {
         let n_float = n as f32;
 
         // Ideal averaging filter width
         let w_ideal = (12.0 * sigma * sigma / n_float).sqrt() + 1.0;
-        let mut wl: i32 = w_ideal.floor() as i32;
+        wl = w_ideal.floor() as i32;
 
         if wl % 2 == 0 { wl -= 1; };
 
-        let wu = wl + 2;
+        wu = wl + 2;
 
         let wl_float = wl as f32;
         let m_ideal = (12.0 * sigma * sigma - n_float * wl_float * wl_float - 4.0 * n_float * wl_float - 3.0 * n_float) /
                     (-4.0 * wl_float - 4.0);
-        let m: usize = m_ideal.round() as usize;
-
-        let mut sizes = Vec::<i32>::new();
-
-        for i in 0..n {
-            if i < m {
-                sizes.push(wl);
-            } else {
-                sizes.push(wu);
-            }
-        }
-
-        sizes
-    } else {
-        vec![1; n]
+        m = m_ideal.round() as usize;
     }
+
+    std::iter::repeat(wl).take(min(m,n)).chain(std::iter::repeat(wu).take(n.checked_sub(m).unwrap_or(0)))
+    //(0..n).map(|i| if i < m { wl } else { wu })
 }
 
 /// Needs 2x the same image
